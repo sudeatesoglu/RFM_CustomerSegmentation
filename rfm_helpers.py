@@ -27,19 +27,30 @@ def preprocess_data(dataframe):
     dataframe = dataframe[~dataframe["Invoice"].str.contains("C", na=False)]
     print("Canceled transaction invoices have been removed.")
 
+    # filter invalid rows with negative price
+    dataframe = dataframe[dataframe["Price"] >= 0]
+    print("Invalid price values have been removed.")
+
     # filter invalid rows with negative quantity
-    dataframe = dataframe[(dataframe['Quantity'] > 0)]
+    dataframe = dataframe[(dataframe["Quantity"] > 0)]
     print("Void transactions have been removed.")
 
     # drop rows with missing values
     dataframe.dropna(inplace=True)
+    print("Rows without information have been dropped.")
+    print("Preprocessing completed.")
 
-    # remove rows with stockcodes contain ambiguous character
+    return dataframe
+
+
+def clean_invalid_codes(dataframe):
+    # remove rows with stockcodes have ambiguous description
     dataframe = dataframe[dataframe["StockCode"] != "M"]
-    print("Stock codes of 'price: 0' have been removed.")
+    print("Stock code of ambiguous description have been removed.")
 
     # find, document and remove invalid stockcodes
     invalid_codes = dataframe[dataframe["StockCode"].astype(str).str.contains(r"[a-zA-Z]{3,}")]["StockCode"].unique().tolist()
+
     print("#####################################################")
     invalid_df = dataframe[dataframe["StockCode"].isin(invalid_codes)].groupby(["StockCode"]).agg({"Invoice": "nunique",
                                                                                                    "Quantity": "sum",
@@ -48,13 +59,13 @@ def preprocess_data(dataframe):
     print(invalid_df)
     dataframe = dataframe[~dataframe["StockCode"].isin(invalid_codes)].reset_index(drop=True)
     print("#####################################################")
+
     print(f"Invalid stock codes have been removed: {invalid_codes}")
-    print("Preprocessing completed.")
 
     return dataframe
 
 
-# feature extension with selected country column
+# returning dataframe with selected country column
 def select_country(dataframe, country):
     country_df = dataframe.loc[dataframe["Country"] == country]
     return country_df
